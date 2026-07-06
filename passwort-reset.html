@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Passwort zurücksetzen – my.erni</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(160deg, #1D9E75 0%, #a8e6cf 55%, #f2c94c 100%);
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 32px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    .logo {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 300;
+      color: #1D9E75;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .logo span { font-weight: 700; }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    p {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid #e2e2e2;
+      border-radius: 10px;
+      font-size: 15px;
+      margin-bottom: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #1D9E75; }
+    .regeln {
+      list-style: none;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .regeln li {
+      font-size: 13px;
+      color: #aaa;
+      padding: 3px 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: color 0.2s;
+    }
+    .regeln li.ok { color: #1D9E75; }
+    .regeln li::before { content: '○'; font-size: 11px; }
+    .regeln li.ok::before { content: '✓'; }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #1D9E75;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: opacity 0.2s;
+    }
+    button:disabled { opacity: 0.6; cursor: default; }
+    .fehler {
+      background: #fef2f2;
+      color: #dc2626;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .erfolg {
+      text-align: center;
+      display: none;
+    }
+    .erfolg .check {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .erfolg h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+    .erfolg p {
+      color: #888;
+      font-size: 14px;
+      text-align: center;
+    }
+    .abgelaufen {
+      text-align: center;
+      display: none;
+    }
+    .abgelaufen .icon { font-size: 48px; margin-bottom: 16px; }
+    .abgelaufen h2 { font-size: 20px; margin-bottom: 8px; }
+    .abgelaufen p { color: #888; font-size: 14px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">my.<span>erni</span></div>
+    <div class="subtitle">Dein persönlicher Kochassistent</div>
+
+    <!-- Formular -->
+    <div id="formular">
+      <h1>Neues Passwort</h1>
+      <p>Gib dein neues Passwort ein.</p>
+      <div class="fehler" id="fehler"></div>
+      <label for="pw">Neues Passwort</label>
+      <input type="password" id="pw" placeholder="Mindestens 8 Zeichen" oninput="pruefeRegeln()" onfocus="document.getElementById('regeln').style.display='block'" />
+      <ul class="regeln" id="regeln">
+        <li id="r-laenge">Mindestens 8 Zeichen</li>
+        <li id="r-zahl">Mindestens eine Zahl</li>
+        <li id="r-gross">Mindestens ein Großbuchstabe</li>
+      </ul>
+      <label for="pw2">Passwort wiederholen</label>
+      <input type="password" id="pw2" placeholder="Passwort bestätigen" />
+      <button id="btn" onclick="speichern()">Passwort speichern</button>
+    </div>
+
+    <!-- Erfolg -->
+    <div class="erfolg" id="erfolg">
+      <div class="check">✅</div>
+      <h2>Passwort geändert!</h2>
+      <p>Du kannst dich jetzt mit deinem neuen Passwort in der my.erni App einloggen.</p>
+    </div>
+
+    <!-- Abgelaufen -->
+    <div class="abgelaufen" id="abgelaufen">
+      <div class="icon">⏱️</div>
+      <h2>Link abgelaufen</h2>
+      <p>Dieser Link ist nicht mehr gültig. Bitte fordere in der App einen neuen Link an.</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // ⚠️ HIER deine Supabase-Daten eintragen:
+    const SUPABASE_URL  = 'https://edscrlengttpdidhlbjn.supabase.co';
+    const SUPABASE_ANON = 'sb_publishable_t5Tqdp9VC9Zb4jEx_kXp1A_la4jBq7V';
+
+    const { createClient } = supabase;
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    // Tokens aus der URL lesen
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken  = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const type         = params.get('type');
+    const errorCode    = params.get('error_code');
+
+    if (errorCode || !accessToken || type !== 'recovery') {
+      document.getElementById('formular').style.display  = 'none';
+      document.getElementById('abgelaufen').style.display = 'block';
+    } else {
+      client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+    }
+
+    function pruefeRegeln() {
+      const pw = document.getElementById('pw').value;
+      toggle('r-laenge', pw.length >= 8);
+      toggle('r-zahl',   /\d/.test(pw));
+      toggle('r-gross',  /[A-Z]/.test(pw));
+    }
+    function toggle(id, ok) {
+      document.getElementById(id).classList.toggle('ok', ok);
+    }
+    function regelOk() {
+      const pw = document.getElementById('pw').value;
+      return pw.length >= 8 && /\d/.test(pw) && /[A-Z]/.test(pw);
+    }
+
+    async function speichern() {
+      const pw  = document.getElementById('pw').value;
+      const pw2 = document.getElementById('pw2').value;
+      const fehlerEl = document.getElementById('fehler');
+      const btn = document.getElementById('btn');
+
+      fehlerEl.style.display = 'none';
+
+      if (!regelOk()) {
+        fehlerEl.textContent = 'Bitte alle Passwort-Anforderungen erfüllen.';
+        fehlerEl.style.display = 'block'; return;
+      }
+      if (pw !== pw2) {
+        fehlerEl.textContent = 'Die Passwörter stimmen nicht überein.';
+        fehlerEl.style.display = 'block'; return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Wird gespeichert…';
+
+      const { error } = await client.auth.updateUser({ password: pw });
+
+      if (error) {
+        fehlerEl.textContent = error.message.includes('different from the old')
+          ? 'Das neue Passwort muss sich vom alten unterscheiden.'
+          : 'Fehler: ' + error.message;
+        fehlerEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Passwort speichern';
+      } else {
+        document.getElementById('formular').style.display = 'none';
+        document.getElementById('erfolg').style.display   = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
