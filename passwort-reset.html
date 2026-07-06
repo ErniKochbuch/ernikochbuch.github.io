@@ -187,11 +187,18 @@
     const type         = params.get('type');
     const errorCode    = params.get('error_code');
 
+    let sessionBereit = false;
+
     if (errorCode || !accessToken || type !== 'recovery') {
-      document.getElementById('formular').style.display  = 'none';
+      document.getElementById('formular').style.display   = 'none';
       document.getElementById('abgelaufen').style.display = 'block';
     } else {
-      client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(() => { sessionBereit = true; })
+        .catch(() => {
+          document.getElementById('formular').style.display   = 'none';
+          document.getElementById('abgelaufen').style.display = 'block';
+        });
     }
 
     function pruefeRegeln() {
@@ -216,6 +223,10 @@
 
       fehlerEl.style.display = 'none';
 
+      if (!sessionBereit) {
+        fehlerEl.textContent = 'Seite wird noch geladen, bitte kurz warten.';
+        fehlerEl.style.display = 'block'; return;
+      }
       if (!regelOk()) {
         fehlerEl.textContent = 'Bitte alle Passwort-Anforderungen erfüllen.';
         fehlerEl.style.display = 'block'; return;
