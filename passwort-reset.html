@@ -226,24 +226,25 @@
       btn.disabled = true;
       btn.textContent = 'Wird gespeichert…';
 
-      // Session direkt beim Speichern setzen — frisch und zuverlässig
-      const { error: sessionError } = await client.auth.setSession({
-        access_token: urlAccessToken,
-        refresh_token: urlRefreshToken,
+      // Direkter REST-API-Aufruf mit dem Access Token aus der URL.
+      // Umgeht localStorage komplett — funktioniert auch im iOS In-App-Browser.
+      const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON,
+          'Authorization': 'Bearer ' + urlAccessToken,
+        },
+        body: JSON.stringify({ password: pw }),
       });
 
-      if (sessionError) {
-        document.getElementById('formular').style.display   = 'none';
-        document.getElementById('abgelaufen').style.display = 'block';
-        return;
-      }
+      const json = await res.json();
 
-      const { error } = await client.auth.updateUser({ password: pw });
-
-      if (error) {
-        fehlerEl.textContent = error.message.includes('different from the old')
+      if (!res.ok) {
+        const msg = json.message || json.error_description || 'Unbekannter Fehler';
+        fehlerEl.textContent = msg.includes('different from the old')
           ? 'Das neue Passwort muss sich vom alten unterscheiden.'
-          : 'Fehler: ' + error.message;
+          : 'Fehler: ' + msg;
         fehlerEl.style.display = 'block';
         btn.disabled = false;
         btn.textContent = 'Passwort speichern';
