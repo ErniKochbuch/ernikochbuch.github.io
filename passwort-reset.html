@@ -189,16 +189,17 @@
 
     let sessionBereit = false;
 
-    if (errorCode || !accessToken || type !== 'recovery') {
+    // Supabase verarbeitet die URL-Tokens automatisch (detectSessionInUrl ist true).
+    // Wir warten auf das PASSWORD_RECOVERY-Event statt setSession manuell aufzurufen.
+    client.auth.onAuthStateChange((event, session) => {
+      if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
+        sessionBereit = true;
+      }
+    });
+
+    if (errorCode || type !== 'recovery') {
       document.getElementById('formular').style.display   = 'none';
       document.getElementById('abgelaufen').style.display = 'block';
-    } else {
-      client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(() => { sessionBereit = true; })
-        .catch(() => {
-          document.getElementById('formular').style.display   = 'none';
-          document.getElementById('abgelaufen').style.display = 'block';
-        });
     }
 
     function pruefeRegeln() {
