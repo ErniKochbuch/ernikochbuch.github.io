@@ -179,25 +179,15 @@
     const { createClient } = supabase;
     const client = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-    // Tokens aus der URL lesen
+    // Tokens aus der URL lesen und im Speicher halten
     const hash = window.location.hash.substring(1);
     const params = new URLSearchParams(hash);
-    const accessToken  = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    const type         = params.get('type');
-    const errorCode    = params.get('error_code');
+    const urlAccessToken  = params.get('access_token');
+    const urlRefreshToken = params.get('refresh_token');
+    const type            = params.get('type');
+    const errorCode       = params.get('error_code');
 
-    let sessionBereit = false;
-
-    // Supabase verarbeitet die URL-Tokens automatisch (detectSessionInUrl ist true).
-    // Wir warten auf das PASSWORD_RECOVERY-Event statt setSession manuell aufzurufen.
-    client.auth.onAuthStateChange((event, session) => {
-      if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
-        sessionBereit = true;
-      }
-    });
-
-    if (errorCode || type !== 'recovery') {
+    if (errorCode || type !== 'recovery' || !urlAccessToken) {
       document.getElementById('formular').style.display   = 'none';
       document.getElementById('abgelaufen').style.display = 'block';
     }
@@ -224,10 +214,6 @@
 
       fehlerEl.style.display = 'none';
 
-      if (!sessionBereit) {
-        fehlerEl.textContent = 'Seite wird noch geladen, bitte kurz warten.';
-        fehlerEl.style.display = 'block'; return;
-      }
       if (!regelOk()) {
         fehlerEl.textContent = 'Bitte alle Passwort-Anforderungen erfüllen.';
         fehlerEl.style.display = 'block'; return;
@@ -239,6 +225,18 @@
 
       btn.disabled = true;
       btn.textContent = 'Wird gespeichert…';
+
+      // Session direkt beim Speichern setzen — frisch und zuverlässig
+      const { error: sessionError } = await client.auth.setSession({
+        access_token: urlAccessToken,
+        refresh_token: urlRefreshToken,
+      });
+
+      if (sessionError) {
+        document.getElementById('formular').style.display   = 'none';
+        document.getElementById('abgelaufen').style.display = 'block';
+        return;
+      }
 
       const { error } = await client.auth.updateUser({ password: pw });
 
