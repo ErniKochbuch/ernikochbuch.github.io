@@ -177,7 +177,9 @@
     const SUPABASE_ANON = 'sb_publishable_t5Tqdp9VC9Zb4jEx_kXp1A_la4jBq7V';
 
     const { createClient } = supabase;
-    const client = createClient(SUPABASE_URL, SUPABASE_ANON);
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON, {
+      auth: { detectSessionInUrl: false },
+    });
 
     // Tokens aus der URL lesen und im Speicher halten
     const hash = window.location.hash.substring(1);
@@ -226,31 +228,41 @@
       btn.disabled = true;
       btn.textContent = 'Wird gespeichert…';
 
-      // Direkter REST-API-Aufruf mit dem Access Token aus der URL.
-      // Umgeht localStorage komplett — funktioniert auch im iOS In-App-Browser.
-      const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON,
-          'Authorization': 'Bearer ' + urlAccessToken,
-        },
-        body: JSON.stringify({ password: pw }),
-      });
+      try {
+        // Direkter REST-API-Aufruf mit dem Access Token aus der URL.
+        // Umgeht localStorage komplett — funktioniert auch im iOS In-App-Browser.
+        const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON,
+            'Authorization': 'Bearer ' + urlAccessToken,
+          },
+          body: JSON.stringify({ password: pw }),
+        });
 
-      const json = await res.json();
+        let json = {};
+        try { json = await res.json(); } catch (_) {}
 
-      if (!res.ok) {
-        const msg = json.message || json.error_description || 'Unbekannter Fehler';
-        fehlerEl.textContent = msg.includes('different from the old')
-          ? 'Das neue Passwort muss sich vom alten unterscheiden.'
-          : 'Fehler: ' + msg;
+        if (!res.ok) {
+          const msg = json.message || json.error_description || json.error || ('HTTP ' + res.status);
+          fehlerEl.textContent = msg.includes('different from the old')
+            ? 'Das neue Passwort muss sich vom alten unterscheiden.'
+            : msg.includes('expired') || msg.includes('invalid')
+            ? 'Der Link ist abgelaufen. Bitte fordere einen neuen an.'
+            : 'Fehler: ' + msg;
+          fehlerEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Passwort speichern';
+        } else {
+          document.getElementById('formular').style.display = 'none';
+          document.getElementById('erfolg').style.display   = 'block';
+        }
+      } catch (err) {
+        fehlerEl.textContent = 'Netzwerkfehler – bitte Internetverbindung prüfen.';
         fehlerEl.style.display = 'block';
         btn.disabled = false;
         btn.textContent = 'Passwort speichern';
-      } else {
-        document.getElementById('formular').style.display = 'none';
-        document.getElementById('erfolg').style.display   = 'block';
       }
     }
   </script>
