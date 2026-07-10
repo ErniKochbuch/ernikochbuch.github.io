@@ -185,8 +185,9 @@
     }
 
     function appOeffnen() {
-      // Tokens als Fragment an die App weiterleiten — die App erledigt den Rest
-      const deepLink = 'ernikochapp://passwort-reset#access_token=' + urlAccessToken
+      // Kein Pfad angeben — Expo Router sucht sonst eine Seite die nicht existiert.
+      // handleUrl in _layout.tsx erkennt die Tokens im Fragment und navigiert selbst.
+      const deepLink = 'ernikochapp://#access_token=' + urlAccessToken
         + '&refresh_token=' + urlRefreshToken
         + '&type=recovery';
       window.location.href = deepLink;
